@@ -131,6 +131,9 @@ double gx, gy, gz;
 #define LED3_PIN 41
 #define LED4_PIN 40 
 bool led_test_state = false;
+hw_timer_t *ledAgentConnected_timer = NULL;
+bool agent_led_toggle = false;
+bool agentConnectedState;
 
 /* ----------------------- */
 /* ROS State and Reconnect */
@@ -208,6 +211,14 @@ void IRAM_ATTR readPWM2_ISR(){
     pwm2_struct.pwm_val = (pwm2_struct.down_stamp - pwm2_struct.high_stamp);
     pwm2_struct.allow_cal_pwm = true;
   }
+}
+
+void IRAM_ATTR ledAgentConnected_ISR(){
+  if (agentConnectedState){
+    agent_led_toggle = ! agent_led_toggle;
+    digitalWrite(AGENT_CONNECTED_LED_PIN, !digitalRead(AGENT_CONNECTED_LED_PIN));
+  }
+  
 }
 
 /////////////////////
@@ -635,6 +646,12 @@ void setup() {
   digitalWrite(LED3_PIN, 0);
   digitalWrite(LED4_PIN, 0);
 
+  /* LED Timer ISR */
+  ledAgentConnected_timer = timerBegin(0, 80, true); // prescalar 80 -> Timer running at 1MHz
+  timerAttachInterrupt(ledAgentConnected_timer, &ledAgentConnected_ISR, true);
+  timerAlarmWrite(ledAgentConnected_timer, 50000, true); // specify second arg as how much time in microsec to execute ISR
+  timerAlarmEnable(ledAgentConnected_timer);
+
   /* --------------- */
   /* PWM Servo setup */
   /* --------------- */
@@ -786,10 +803,16 @@ void loop() {
       break;
   }
 
-  if ((state == AGENT_CONNECTED) && (prev_state != state)) {
-    digitalWrite(AGENT_CONNECTED_LED_PIN, 1);
-  } else if ((state != AGENT_CONNECTED) && (prev_state != state)) {
-    digitalWrite(AGENT_CONNECTED_LED_PIN, 0);
+  // if ((state == AGENT_CONNECTED) && (prev_state != state)) {
+  //   digitalWrite(AGENT_CONNECTED_LED_PIN, 1);
+  // } else if ((state != AGENT_CONNECTED) && (prev_state != state)) {
+  //   digitalWrite(AGENT_CONNECTED_LED_PIN, 0);
+  // }
+
+  if (state == AGENT_CONNECTED){
+    agentConnectedState = true;
+  } else {
+    agentConnectedState = false;
   }
 
   /* ------------------------ */
@@ -824,10 +847,11 @@ void loop() {
   /* --------------- */
   /* Read BNO055 IMU */
   /* --------------- */
-  sensors_event_t orientationData , angVelocityData , linearAccelData;
+  sensors_event_t orientationData , angVelocityData , linearAccelData, accelerometerData;
   //bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
   bno.getEvent(&angVelocityData, Adafruit_BNO055::VECTOR_GYROSCOPE);
-  bno.getEvent(&linearAccelData, Adafruit_BNO055::VECTOR_LINEARACCEL);
+  // bno.getEvent(&linearAccelData, Adafruit_BNO055::VECTOR_LINEARACCEL);
+  bno.getEvent(&accelerometerData, Adafruit_BNO055::VECTOR_ACCELEROMETER);
 
   imu::Quaternion quat = bno.getQuat();
   qw = quat.w();
@@ -835,9 +859,13 @@ void loop() {
   qy = quat.y();
   qz = quat.z();
 
-  ax = linearAccelData.acceleration.x;
-  ay = linearAccelData.acceleration.y;
-  az = linearAccelData.acceleration.z;
+  // ax = linearAccelData.acceleration.x;
+  // ay = linearAccelData.acceleration.y;
+  // az = linearAccelData.acceleration.z;
+
+  ax = accelerometerData.acceleration.x;
+  ay = accelerometerData.acceleration.y;
+  az = accelerometerData.acceleration.z;
 
   gx = angVelocityData.gyro.x;
   gy = angVelocityData.gyro.y;
