@@ -1,1 +1,0 @@
-/home/rasheed/AT_ZMOAB_ROS01/ws
