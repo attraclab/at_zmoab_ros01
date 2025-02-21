@@ -1,0 +1,31 @@
+When making new project, and we need to use many pub/sub note.
+We have to make our own custom.meta otherwise it will be limited as pub 10, sub 5
+
+https://github.com/micro-ROS/micro_ros_platformio/issues/87#issuecomment-1354242266
+
+put this on custom.meta on workspace directory
+{
+    "names": {
+        "rmw_microxrcedds": {
+            "cmake-args": [
+                "-DRMW_UXRCE_MAX_NODES=1",
+                "-DRMW_UXRCE_MAX_PUBLISHERS=15",
+                "-DRMW_UXRCE_MAX_SUBSCRIPTIONS=15",
+                "-DRMW_UXRCE_MAX_SERVICES=2",
+                "-DRMW_UXRCE_MAX_CLIENTS=1",
+                "-DRMW_UXRCE_MAX_HISTORY=4",
+                "-DRMW_UXRCE_TRANSPORT=custom"
+            ]
+        }
+    }
+}
+
+make sure to put the line below on platformio.ini
+
+board_microros_user_meta = custom.meta
+
+### If want to do it during project already made, then try change the name of 
+
+[env:esp32s3devkitc] inside platformio.ini to something
+
+Clean -> Build again
