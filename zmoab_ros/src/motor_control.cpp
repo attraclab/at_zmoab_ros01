@@ -17,8 +17,8 @@ ZLAC8015D driver;
 
 uint8_t res;
 
-int16_t rpmL;
-int16_t rpmR;
+int16_t rpmL = 0;
+int16_t rpmR = 0;
 float rpm[2];
 float prev_y = 0.0;
 float max_rpm = 200.0;
@@ -39,6 +39,8 @@ int32_t encoder_right = 0;
 int16_t faultCode_left =  0;
 int16_t faultCode_right = 0;
 unsigned long last_recv_rpm_cmd_stamp = millis();
+unsigned long last_loop_stamp = millis();
+bool first_drive = false;
 
 
 void preTransmission(){
@@ -118,12 +120,11 @@ void setup_motor(){
 	driver.set_modbus(&ModbusNode);
 	bool done = false;
 
-	while (! done) {
+	do {
 		res = driver.disable_motor();
-		if (res == 0) {
-			done = true;
-		}
-	}
+	} while (res != 0);
+	delay(100);
+
 	res = driver.set_mode(3);
 	res = driver.enable_motor();
 	res = driver.set_accel_time(20, 20);
@@ -149,7 +150,53 @@ void set_rpm_cmd(int16_t _rpmL, int16_t _rpmR){
 	rpmR = _rpmR;
 }
 
+void init_drive(){
+	/* There is somebug on ModbusMaster when we firstly send rpm command
+	it will block the code around 2 seconds, so make it moves 1rpm
+	here forward and backward to prevent uncontrolable in loop*/
+
+
+	do {
+		res = driver.set_rpm(1, 0);
+		// USBSerial.printf("Try  init rpm\n");
+		delay(100);
+	} while (res != 0);
+		
+	do {
+		res = driver.set_rpm(0, 0);
+		// USBSerial.printf("Finish init rpm\n");
+		delay(100);
+	} while (res != 0);
+
+	do {
+		res = driver.set_rpm(-1, 0);
+		// USBSerial.printf("Move back rpm\n");
+		delay(100);
+	} while (res != 0);
+	delay(1000);
+
+	do {
+		res = driver.set_rpm(0, 0);
+		// USBSerial.printf("Finish init rpm\n");
+		delay(100);
+	} while (res != 0);
+
+}
+
 void motor_control_loop(){
+
+	// with everything, loop takes 15ms
+	// without read encoder, loop takes 9-10ms
+	// withou read encoder/rpm, loop takes 5ms
+
+	unsigned long start_stamp = millis();
+
+	if (first_drive == false){
+		first_drive = true;
+		init_drive();
+		delay(2000);
+	}
+
 	if (cart_mode == 2){
 		if ((millis() - last_recv_rpm_cmd_stamp) >= 1000){
 			rpmL = 0;
@@ -159,11 +206,12 @@ void motor_control_loop(){
 			res = driver.set_rpm(rpmL, rpmR);
 		}
 	} else if (cart_mode == 1){
+
 		memcpy(sbus_ch, ch, sizeof(ch));
 		channelMixing(sbus_ch[0], sbus_ch[1], rpm);
+		
 		rpmL = (int16_t)rpm[0];
 		rpmR = (int16_t)rpm[1];
-
 		res = driver.set_rpm(rpmL, rpmR);
 		
 	} else {
@@ -181,10 +229,10 @@ void motor_control_loop(){
 	encoder_left = _encoderFB[0];
 	encoder_right = _encoderFB[1];
 
-
 	/* -------------------- */
 	/* Check ESC Fault Code */
 	/* -------------------- */
+
 	if ((millis() - last_fault_code_stamp) >= 2000){
 		res = driver.get_fault_code(_faultCode);
 
@@ -207,12 +255,19 @@ void motor_control_loop(){
 		}
 
 	}
+
+	// unsigned long loop_period = millis() - start_stamp;
+	// USBSerial.printf("period: %d\n", loop_period);
+
+	last_loop_stamp = millis();
 }
 
-static void motor_worker_task(void *pvParameters){
-
-	while (1){
-
-		motor_control_loop();
-	}
-}
+// static void motor_worker_task(void *pvParameters){
+// 	while (1){
+// 		unsigned long loop_period =  (millis() - last_loop_stamp);
+// 		if (loop_period >= 100){
+// 			// USBSerial.printf("----------------------\n");
+// 			USBSerial.printf("loop_period: %d\n", loop_period);		
+// 		}
+// 	}
+// }

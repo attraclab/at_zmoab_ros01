@@ -20,7 +20,8 @@ void setup_motor();
 void set_enable_motor();
 void set_disable_motor();
 void set_rpm_cmd(int16_t _rpmL, int16_t _rpmR);
-static void motor_worker_task(void *pvParameters);
+void init_drive();
+// static void motor_worker_task(void *pvParameters);
 
 void motor_control_loop();
 

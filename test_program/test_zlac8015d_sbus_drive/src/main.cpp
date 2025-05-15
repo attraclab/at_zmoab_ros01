@@ -82,6 +82,11 @@ static void sbus_rx_task(void *pvParameters)
             init_sbus_val();
           }
 
+          // USBSerial.print("ch1: ");
+          // USBSerial.print(ch[0]);
+          // USBSerial.print(" ch2: ");
+          // USBSerial.println(ch[1]);
+
           got_sbus_data = true;
         }
       }
@@ -99,8 +104,8 @@ static void sbus_rx_task(void *pvParameters)
 /// ZLAC8015D & ModbusMaster ///
 ////////////////////////////////
 #define MAX485_DE  2
-#define MODBUS_RX_PIN 44
-#define MODBUS_TX_PIN 43
+#define MODBUS_RX_PIN 43 //44
+#define MODBUS_TX_PIN 44 //43
 
 void preTransmission(){
   digitalWrite(MAX485_DE, 1);
@@ -124,6 +129,7 @@ float prev_y = 0.0;
 float max_rpm = 200.0;
 float rpmDB = 5.0;
 int16_t rpmFB[2];
+bool first_drive = false;
 
 void channelMixing(uint16_t str_ch, uint16_t thr_ch, float _rpm[2]){
   
@@ -228,36 +234,67 @@ void setup() {
   driver.set_modbus(&node);
   bool done = false;
   
-  while (! done) {
+  do {
     res = driver.disable_motor();
     USBSerial.print("disable motor ");
     USBSerial.println(res);
-    if (res == 0) {
-      done = true;
-    }
-  }
-  res = driver.set_mode(3);
-  USBSerial.print("set mode ");
-  USBSerial.println(res);
+  } while (res != 0);
+ 
+  do {
+    res = driver.set_mode(3);
+    USBSerial.print("set mode ");
+    USBSerial.println(res);
+    delay(100);
+  } while (res != 0);
+    
+  do {
+    res = driver.enable_motor();
+    USBSerial.print("enable motor ");
+    USBSerial.println(res);
+    delay(100);
+  } while (res != 0);
+
+  do {
+    res = driver.set_accel_time(20, 20);
+    USBSerial.print("set accel ");
+    USBSerial.println(res);
+    delay(100);
+  } while (res != 0);
+  
+  do {
+    res = driver.set_decel_time(20, 20);
+    USBSerial.print("set decel ");
+    USBSerial.println(res);
+    delay(100);
+  } while (res != 0);
+  
 
   
-  res = driver.enable_motor();
-  USBSerial.print("enable motor ");
-  USBSerial.println(res);
 
-  res = driver.set_accel_time(0, 0);
-  USBSerial.print("set accel ");
-  USBSerial.println(res);
+  do {
+    res = driver.set_rpm(1, -1);
+    USBSerial.printf("Try  init rpm\n");
+    delay(100);
+  } while (res != 0);
+  
+  do {
+    res = driver.set_rpm(0, 0);
+    USBSerial.printf("Finish init rpm\n");
+    delay(1000);
+  } while (res != 0);
 
-  res = driver.set_decel_time(0, 0);
-  USBSerial.print("set decel ");
-  USBSerial.println(res);
-  delay(1000);
+  
 }
 
 void loop() {
 
   if (got_sbus_data){
+
+    if (first_drive == false){
+      first_drive = true;
+      res = driver.set_rpm(-1, 1);
+      delay(2000);
+    }
 
     memcpy(sbus_ch, ch, sizeof(ch));
 
@@ -265,22 +302,27 @@ void loop() {
     rpmL = (int16_t)rpm[0];
     rpmR = (int16_t)rpm[1];
 
+    // USBSerial.printf("rpmL: %d rpmR: %d \n", rpmL, rpmR);
     res = driver.set_rpm(rpmL, rpmR);
     
-    res = driver.get_rpm(rpmFB);
+    
+    // res = driver.get_rpm(rpmFB);
 
-    USBSerial.print("ch1: ");
-    USBSerial.print(sbus_ch[0]);
-    USBSerial.print(" ch2: ");
-    USBSerial.print(sbus_ch[1]);
-    USBSerial.print(" rpmL_cmd: ");
-    USBSerial.print(rpmL);
-    USBSerial.print(" rpmR_cmd: ");
-    USBSerial.print(rpmR);
-    USBSerial.print(" rpmL_fb: ");
-    USBSerial.print(rpmFB[0]);
-    USBSerial.print(" rpmR_fb: ");
-    USBSerial.println(rpmFB[1]);
+    // USBSerial.print("ch1: ");
+    // USBSerial.print(sbus_ch[0]);
+    // USBSerial.print(" ch2: ");
+    // USBSerial.print(sbus_ch[1]);
+    // USBSerial.print(" rpmL_cmd: ");
+    // USBSerial.print(rpmL);
+    // USBSerial.print(" rpmR_cmd: ");
+    // USBSerial.print(rpmR);
+    // USBSerial.print(" rpmL_fb: ");
+    // USBSerial.print(rpmFB[0]);
+    // USBSerial.print(" rpmR_fb: ");
+    // USBSerial.println(rpmFB[1]);
+
+    // delay(10);
+
   }
 }
 
