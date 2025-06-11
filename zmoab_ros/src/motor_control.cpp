@@ -151,25 +151,29 @@ void set_rpm_cmd(int16_t _rpmL, int16_t _rpmR){
 }
 
 void init_drive(){
-	/* There is somebug on ModbusMaster when we firstly send rpm command
-	it will block the code around 2 seconds, so make it moves 1rpm
-	here forward and backward to prevent uncontrolable in loop*/
 
+	/* There is somebug on ModbusMaster when we firstly send rpm command
+	which not 0 value. It will block the code around 2 seconds, and the
+	cart just keep moving with that speed...
+	So I make it moves 2rpm rotating then stop, so next rpm command will not
+	be blocked anymore */
 
 	do {
-		res = driver.set_rpm(1, 0);
+		res = driver.set_rpm(2, -2);
 		// USBSerial.printf("Try  init rpm\n");
 		delay(100);
 	} while (res != 0);
+	delay(1000);
 		
 	do {
 		res = driver.set_rpm(0, 0);
 		// USBSerial.printf("Finish init rpm\n");
 		delay(100);
 	} while (res != 0);
+	delay(1000);
 
 	do {
-		res = driver.set_rpm(-1, 0);
+		res = driver.set_rpm(-2, 2);
 		// USBSerial.printf("Move back rpm\n");
 		delay(100);
 	} while (res != 0);

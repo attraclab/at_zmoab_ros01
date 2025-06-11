@@ -9,10 +9,10 @@ int8_t sw_val_list[4] = {0, 0, 0, 0};
 
 void setup_switch(){
 
-    pinMode(SW1, INPUT);
-    pinMode(SW2, INPUT);
-    pinMode(SW3, INPUT);
-    pinMode(SW4, INPUT);
+    pinMode(SW1, INPUT_PULLUP);
+    pinMode(SW2, INPUT_PULLUP);
+    pinMode(SW3, INPUT_PULLUP);
+    pinMode(SW4, INPUT_PULLUP);
 
 }
 
