@@ -16,6 +16,7 @@ extern unsigned long last_recv_rpm_cmd_stamp;
 
 
 void channelMixing(uint16_t str_ch, uint16_t thr_ch, float _rpm[2]);
+void channelMixing_by_Joystick(float x, float y, float _rpm[2]);
 void setup_motor();
 void set_enable_motor();
 void set_disable_motor();

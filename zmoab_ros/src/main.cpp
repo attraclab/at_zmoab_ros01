@@ -15,6 +15,7 @@
 #include "pwm_handler.h"
 #include "switch_handler.h"
 #include "led_strip.h"
+#include "ble_interface.h"
 
 
 /////////////////////
@@ -32,7 +33,6 @@ void setup() {
 	/* --------------- */
 	set_microros_serial_transports(USBSerial);
 	delay(2000);
-
 	init_ros_msgs();
 
 	setup_sbus();
@@ -42,6 +42,8 @@ void setup() {
 	setup_servo();
 	setup_switch();
 	setup_led_strip();
+	setupBLE();
+	
 }
 
 ////////////////////
@@ -60,6 +62,8 @@ void loop() {
 	switch_loop();
 
 	led_strip_loop();
+
+	ble_loop();
 
 }
 

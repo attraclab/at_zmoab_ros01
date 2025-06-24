@@ -23,6 +23,7 @@ float rpm[2];
 float prev_y = 0.0;
 float max_rpm = 200.0;
 float rpmDB = 5.0;
+float ble_max_rpm = 100.0;
 
 
 unsigned long last_fault_code_stamp;
@@ -107,6 +108,49 @@ void channelMixing(uint16_t str_ch, uint16_t thr_ch, float _rpm[2]){
 	if ((_rpm[1] < rpmDB) && (_rpm[1] > -rpmDB)){
 		_rpm[1] = 0.0;
 	}
+}
+
+void channelMixing_by_Joystick(float _x, float _y, float _rpm[2]){
+
+	float x = _x*100.0;
+	float y = _y*100.0;
+
+	float left, right;
+	left = y + x;
+	right = y - x;
+	float diff = abs(x) - abs(y);
+
+	if (left < 0.0){
+		left = left - abs(diff);
+	} else {
+		left = left + abs(diff);
+	}
+
+	if (right < 0.0){
+		right = right - abs(diff);
+	} else {
+		right = right + abs(diff);
+	}
+
+	if (prev_y < 0.0){
+		float swap;
+		swap = left;
+		left = right;
+		right = swap;
+	}
+
+	prev_y = y;
+
+	_rpm[0] = map(left, -200.0, 200.0, -ble_max_rpm, ble_max_rpm);
+	_rpm[1] = map(right, -200.0, 200.0, -ble_max_rpm, ble_max_rpm);
+
+	if ((_rpm[0] < rpmDB) && (_rpm[0] > -rpmDB)){
+		_rpm[0] = 0.0;
+	}
+	if ((_rpm[1] < rpmDB) && (_rpm[1] > -rpmDB)){
+		_rpm[1] = 0.0;
+	}
+
 }
 
 void setup_motor(){
@@ -202,7 +246,7 @@ void motor_control_loop(){
 	}
 
 	if (cart_mode == 2){
-		if ((millis() - last_recv_rpm_cmd_stamp) >= 1000){
+		if ((millis() - last_recv_rpm_cmd_stamp) >= 500){
 			rpmL = 0;
 			rpmR = 0;
 			res = driver.set_rpm(rpmL, rpmR);
